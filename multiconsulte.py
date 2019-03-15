@@ -9,6 +9,7 @@ class MultiConsulte(object):
 		super(MultiConsulte, self).__init__()
 		self.consultas=[consulte]
 		self.db=db
+		
 		if type(consulte)==Table:
 			self.table=consulte
 		else:
@@ -36,6 +37,7 @@ class MultiConsulte(object):
 
 		self.consultas.append("and")
 		self.consultas.append(consulta)
+
 		self.table=consulta.table
 
 
@@ -49,7 +51,7 @@ class MultiConsulte(object):
 		self.consultas.append(consulta)
 		self.table=consulta.table
 		return self
-	def _evaluar(self,campos):
+	def evaluate(self,campos):
 		"""
 		evalua si se cumpen todas las consultas adjuntas
 		"""
@@ -72,7 +74,7 @@ class MultiConsulte(object):
 						
 				else:
 
-					_consulta=elem.evaluate()
+					_consulta=elem.evaluate(campos)
 					
 
 					if not consulta and (operador=="or" or  operador==None):
@@ -93,13 +95,13 @@ class MultiConsulte(object):
 		table=self.table
 		finds=0
 		if table.cursor>0:
-			for c in xrange(table.cursor):
+			for c in xrange(table.cursor+1):
 
 				try:
 
 					if table[c]:
 
-						if self._evaluar(table[c]):
+						if self.evaluate(table[c]):
 
 							if self.startfind!=None:
 
@@ -115,7 +117,16 @@ class MultiConsulte(object):
 							break
 
 				except Exception as e:
-					print e
+					if type(e)!=Exception:
+						import traceback
+						import StringIO
+						s=StringIO.StringIO()
+						traceback.print_exc(file=s)
+						s.seek(0)
+						msg=s.read()
+						print msg
+						
+					
 
 		
 		return self

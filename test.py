@@ -3,9 +3,11 @@ from db import DB
 from table import Table 
 from field import Field
 db=DB("test.db")
+#print db(db(db.prueba_table.campo_1=="la que sigue") & ).select()
+db.prueba_table.insert(None,"la que sigue",300)
 
-print db(db.prueba_table).select()
-#db.commit()
+
+db.commit()
 
 """
 db.define_table("prueba_table",

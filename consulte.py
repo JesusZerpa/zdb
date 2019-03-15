@@ -1,4 +1,4 @@
-
+from reference import Reference
 
 
 class Consulte(object):
@@ -56,14 +56,16 @@ class Consulte(object):
 		fusiona las consultas
 		"""
 		return self
-	def _evaluar(self,campos):
+	def evaluate(self,campos):
 		"""
 		evalua si se cumpen todas las consultas adjuntas
 		"""
+
 		def compare(a,operador,b):
 			
 			if operador=="==":
 				if type(b)==Reference:
+
 					return a==b.ids
 				else:
 
@@ -90,10 +92,9 @@ class Consulte(object):
 				return a in b
 
 
-		if campos==[None for i in xrange(len(campos))]:
-			return False
+		
+		index=self.a.table.fields.index(self.a.name)
 
-		index=self.a.table.fields.index(self.a.name)-1
 		consulta=compare(campos[index],self.operador,self.b)
 		
 
@@ -115,7 +116,7 @@ class Consulte(object):
 			else:
 				#es una consulta
 
-				index=self.a.table.fields.index(elem.a.name)-1
+				index=self.a.table.fields.index(elem.a.name)
 				if operador=="and": #consulte & ( field==field)
 					consulta=compare(campos[index],elem.operador,elem.b)
 

@@ -166,8 +166,9 @@ class Set(object):
 					
 
 					if indice>=0 and indice==c:
+						
 
-						row=Row(elem,indice)
+						row=Row(self.db[elem[0]],elem[1])
 						row.referencias=self.referencias
 						row.part=self.part
 						self.db.consultada=row
@@ -213,24 +214,7 @@ class Set(object):
 						
 						c2+=1
 					
-					
-					
-					"""
-					for i in xrange(elem[1][0],end+1,elem[1][2]):
-						self.rows.append((elem[0],elem2))
-						
-						if indice==i:
-							row=Row((elem[0],i),self.db)
-							row.referencias=self.referencias
-							row.part=self.part
-							self.db.consultada=row
-							print row
-
-							return row
-							break
-						c+=1
-					"""
-					
+										
 		if type(indice)==slice:
 			l=[]
 			c=0
@@ -349,22 +333,15 @@ class Set(object):
 		x=self.c
 		
 		if self.c<self.getLength():
-			a=self[x if not self.invert else -x-1]
-			
-			
-			self.c+=1
-			
-			if not a.isEmpty():
+			try:
+				a=self[x if not self.invert else -x-1]
+				self.c+=1
 				return a
-			else:
-				
+			except:
+				self.c+=1
 				self.next()
-
-			
-		else:
-			
-			
-			
+		
+		else:			
 			raise StopIteration
 
 		"""
@@ -414,16 +391,12 @@ class Set(object):
 	def count(self):
 		return len(self.rows)
 	def __str__(self):
+		import json
 		content=""
-
 		for row in self:
 
-			if  row!=None:
-				_content=""
-
-				for k,campo in enumerate(self.db.tableobjects[row.campos[0]].fields[1:]):
-			
-					_content+=","+str(self.db.tableobjects[row.campos[0]].rows[row.campos[1]][k])
-				content+=_content[1:]+"\n"
+			for k,campo in enumerate(row.table.fields):
+				content+=json.dumps(row[k])+("," if k<len(row.table.fields)-1 else "")
+			content+="\n"
 
 		return content

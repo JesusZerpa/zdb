@@ -1,4 +1,35 @@
 # -*- coding: utf-8 -*-
+from db import DB as _DB
+from field import Field 
+from table import Table
+from row import void
+globals()["dblives"]=[]
+def kill(cls,path):
+	if db in dblives:
+		if db.path==path: 
+			dblives.remove(path)
+def _dblives():
+	return globals()["dblives"]
+def DB(system,path):
+	"""
+	El argumento system es pasado automaticamente
+	"""
+	
+	for db in dblives:
+		if db.path==path:
+			return db
+	else:
+		_DB.kill=kill
+		_DB.dblives=_dblives
+		db=_DB(path)
+		dblives.append(db)
+		return db
+	
+DB.kill=kill
+DB.dblives=_dblives
+	
+
+
 def send(message):
 	print(message)
 class ZDB(object):
