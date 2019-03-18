@@ -29,7 +29,7 @@ class Consulte(object):
 	
 	def __str__(self):
 
-		return "Consulte("+"["+self.a.db.dbfile+"]"+"["+self.a.table._tablename+"]"+"["+self.a.name+"]"+self.operador+unicode(self.b)+")["+unicode(len(self.content))+"]"
+		return "Consulte("+"["+self.a.db.path+"]"+"["+self.a.table._tablename+"]"+"["+self.a.name+"]"+self.operador+unicode(self.b)+")["+unicode(len(self.content))+"]"
 	def __iter__(self):
 		self.c=0
 
@@ -95,6 +95,7 @@ class Consulte(object):
 		
 		index=self.a.table.fields.index(self.a.name)
 
+		
 		consulta=compare(campos[index],self.operador,self.b)
 		
 

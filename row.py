@@ -12,13 +12,18 @@ class Row(object):
 		super(Row, self).__init__()
 		self.table = table
 		self.db=table.db
-		if not os.path.exists(self.db.path+"/"+self.table._tablename+"/0/"+json.dumps(cursor)+".py") and not create and self.table._tablename not in self.table.db.__tablesbycreate:
+		
+		if not os.path.exists(self.db.path+"/"+self.table._tablename+"/0/"+json.dumps(cursor)+".py") and not create:
 			raise Exception("No existe el registro")
+		elif create:
+			self.use_cache=True#esto es para no hacer la lectura de los ficheros
+		else:
+			self.use_cache=False#esto es para no hacer la lectura de los ficheros
 
 		self.campos=(table._tablename,cursor)
 
 		self.grud=Counter()
-		self.use_cache=False#esto es para no hacer la lectura de los ficheros
+		
 		if cursor==None:
 			self._n=table.cursor#posicion del cursor en la tabla
 		else:
@@ -29,28 +34,36 @@ class Row(object):
 		if not self.use_cache:
 
 			from datetime import date,time,datetime
-			if self.table._tablename not in self.table.db.__tablesbycreate:
-				self.grud=Counter()
-				for k,elem in enumerate(self.table._fields):
-					if os.path.exists(self.db.path+"/"+self.table._tablename+"/"+json.dumps(k)+"/"+json.dumps(self._n)+".py"):
-						with open(self.db.path+"/"+self.table._tablename+"/"+json.dumps(k)+"/"+json.dumps(self._n)+".py") as f:
-							data=json.loads(f.read())
-							if elem.type=="date":
-								data=date.strptime(data,elem.format)
-							elif elem.type=="datetime":
-								data=datetime.strptime(data,elem.format)
-							elif elem.type=="time":
-								data=time.strptime(data,elem.format)
-							self.grud[k]=data
-					else:
-						self.grud[k]=void()
+			
+			self.grud=Counter()
+			for k,elem in enumerate(self.table._fields):
+				if os.path.exists(self.db.path+"/"+self.table._tablename+"/"+json.dumps(k)+"/"+json.dumps(self._n)+".py"):
+					with open(self.db.path+"/"+self.table._tablename+"/"+json.dumps(k)+"/"+json.dumps(self._n)+".py") as f:
+						data=json.loads(f.read())
+						if elem.type=="date":
+							data=date.strptime(data,elem.format)
+						elif elem.type=="datetime":
+							data=datetime.strptime(data,elem.format)
+						elif elem.type=="time":
+							data=time.strptime(data,elem.format)
+						self.grud[k]=data
+				else:
+					self.grud[k]=void()
 
 
 		if type(clave)==slice:
 
 			return self.grud[clave]
 		if type(clave)==int:
-			if clave<len(self.grud):return self.grud[clave]
+			if clave<=max(list(self.grud)):
+				if clave in self.grud:
+					return self.grud[clave]
+				else:
+					if type(self.table._fields[clave].default)!=None and "__call__" in dir(self.table._fields[clave].default):
+						self.grud[clave]=self.table._fields[clave].default()
+					elif type(self.table._fields[clave].default)!=None:
+						self.grud[clave]=self.table._fields[clave].default
+					return self.grud[clave]
 			else:raise
 		elif type(clave)==unicode or type(clave)==str:
 
@@ -58,6 +71,7 @@ class Row(object):
 
 				if self.table.fields[k]==clave:
 					return self.grud[k]
+
 	def __setitem__(self,clave,valor):
 		from datetime import date,time,datetime
 		
@@ -179,5 +193,6 @@ class Row(object):
 			elif type(elem)!=void:
 				with open(self.db.path+"/"+self.table._tablename+"/"+json.dumps(k)+"/"+json.dumps(self._n)+".py","w") as f:
 					f.write(json.dumps(elem))
+
 
 		

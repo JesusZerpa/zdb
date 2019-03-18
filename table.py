@@ -9,28 +9,50 @@ class Table(object):
 	settings={"fields":[],"cursor":0}
 	timeout=5
 	do_commit=False
-	@classmethod
-	def get_settings(cls,name,db):
+
+
+	
+	def get_settings(self,name,db):
 		
+		if os.path.exists(db.path+"/"+name+"/settings.py"):
+			with open(db.path+"/"+name+"/settings.py") as f:
+					self.settings=json.loads(f.read())
+					fields=[]
+					null=None
+					true=True
+					false=False
+
+					for field in self.settings["fields"]:
+						exec("v="+field["compute"])
+						field["compute"]=v
+						exec("v="+field["default"])
+						field["default"]=v
+						f=Field(field["name"],field["type"])
+						f.table=self
+						f.update(field)
+						fields.append(f)
+					self.settings["fields"]=fields
+
+	@classmethod
+	def load_fields(cls,name,db):
+		l=[]	
 		if os.path.exists(db.path+"/"+name+"/settings.py"):
 			with open(db.path+"/"+name+"/settings.py") as f:
 					cls.settings=json.loads(f.read())
 					fields=[]
+					null=None
+					true=True
+					false=False
 
 					for field in cls.settings["fields"]:
-						exec("v="+field["compute"])
-						field["compute"]=v
-						f=Field(field["name"],field["type"])
-
-						f.update(field)
-						fields.append(f)
-					cls.settings["fields"]=fields
-		
+						l.append(Field(field["name"],field["type"]))
+						
+		return l
 	@classmethod
 	def load(cls,name,db):
 
-		cls.get_settings(name,db)
-		table=Table(name,db,cls.settings["fields"],cls.settings["cursor"])
+		
+		table=Table(name,db,cls.load_fields(name,db),cls.settings["cursor"])
 		
 		setattr(db,name,table)
 		return table 
@@ -60,6 +82,48 @@ class Table(object):
 		self.grud=Counter()#este debe ordenar los elementos de menor a mayor
 		self.c=0
 		self.cursor=cursor#este es el cursor actual de la tabla
+	def _create_consulte(self):
+		if os.path.exists(self.db.path+"/"+self._tablename):
+			exists=existed=os.path.exists(self.db.path+"/"+self._tablename+"/.consulte")
+			consulte={"timeout":5,"id":id(self)}
+			if exists:
+				with open(self.db.path+"/"+self._tablename+"/.consulte") as f:
+					consulte=json.loads(f.read())
+			if consulte["id"]!=id(self):
+				tiempo=time.time()
+				while exists:
+					time.sleep(0.2)
+					if time.time()-tiempo>consulte["timeout"]:
+						os.remove(self.db.path+"/"+self._tablename+"/.consulte")
+						exists=False
+						break
+					exists=os.path.exists(self.db.path+"/"+self._tablename+"/.consulte")
+				with open(self.db.path+"/"+self._tablename+"/.consulte","w") as f:
+					if existed:
+						self.get_settings(self._tablename,self.db)
+					f.write(json.dumps({"timeout":self.timeout,"id":id(self),"message":{"consulte":consulte["id"],"status":404}}))
+	def _has_consulte(self):
+
+		exists=existed=os.path.exists(self.db.path+"/"+self._tablename+"/.consulte")
+
+		if exists:
+			with open(self.db.path+"/"+self._tablename+"/.consulte") as f:
+				consulte=json.loads(f.read())
+			if consulte["id"]==id(self):
+				return True
+		else:
+			return False
+	def _end_consulte(self):
+		if os.path.exists(self.db.path+"/"+self._tablename+"/.consulte"):
+			with open(self.db.path+"/"+self._tablename+"/.consulte") as f:
+				consulte=json.loads(f.read())
+			if consulte["id"]==id(self):
+				os.remove(self.db.path+"/"+self._tablename+"/.consulte")
+
+				
+
+
+
 
 
 	def __len__(self):
@@ -100,25 +164,7 @@ class Table(object):
 			row[k]=elem
 		row.update(**kwargs)
 		
-		
-
-		if os.path.exists(self.db.path+"/"+self._tablename):
-			exists=existed=os.path.exists(self.db.path+"/"+self._tablename+"/.consulte")
-			consulte={"timeout":5}
-			if exists:
-				with open(self.db.path+"/"+self._tablename+"/.consulte") as f:
-					consulte=json.loads(f.read())
-
-			tiempo=time.time()
-			while exists:
-				if time.time()-tiempo>consulte["timeout"]:
-					break
-				exists=os.path.exists(self.db.path+"/"+self._tablename+"/.consulte")
-			if existed:
-				self.get_settings(self._tablename,self.db)
-
-			with open(self.db.path+"/"+self._tablename+"/.consulte","w") as f:
-				f.write(json.dumps({"timeout":self.timeout}))
+		self._create_consulte()
 
 		self.grud[self.cursor]=row
 		self.do_commit=True
@@ -132,23 +178,9 @@ class Table(object):
 		if type(cursor)==slice:
 			return itertools.islice(self,cursor.start,cursor.stop,cursor.step)#indice.stop es el self.end solo que del itertools
 		elif type(cursor)==int and cursor<=self.cursor:
-			l=deque()
-
-			if os.path.exists(self.db.path+"/"+self._tablename+"/0/"+json.dumps(cursor)+".py"):
-				for k,elem in enumerate(self.fields):
-					with open(self.db.path+"/"+self._tablename+"/"+json.dumps(k)+"/"+json.dumps(cursor)+".py") as f:
-						l.append(json.loads(f.read()))
 
 			row=Row(self,cursor)
-
-
-			row.update(*l)
-
-
-
 			self.grud[cursor]=row
-
-
 			return row
 		elif type(cursor)==str or type(cursor)==unicode:
 
@@ -167,30 +199,51 @@ class Table(object):
 
 		if self.do_commit:
 			settings=self.settings
-			settings["fields"]=[]		
-			settings["cursor"]=self.cursor
-
+			is_new=False
+			exists=os.path.exists(self.db.path+"/"+self._tablename)
 			if not os.path.exists(self.db.path+"/"+self._tablename):
-				os.mkdir(self.db.path+"/"+self._tablename)
-			
-			for k,elem in enumerate(self._fields):
-				if not os.path.exists(self.db.path+"/"+self._tablename+"/"+json.dumps(k)):
-					os.mkdir(self.db.path+"/"+self._tablename+"/"+json.dumps(k))
-				attrs=elem._getattrs()
-				source=inspect.getsource(attrs["compute"])
-				attrs["compute"]=source[source.find("=")+1:]
-				attrs["name"]=elem.name
-				attrs["type"]=elem.type
-				settings["fields"].append(attrs)
-			data=json.dumps(settings)
-			with open(self.db.path+"/"+self._tablename+"/settings.py","w") as f:
-					f.write(data)
-			if os.path.exists(self.db.path+"/"+self._tablename+"/.consulte"):
-				os.remove(self.db.path+"/"+self._tablename+"/.consulte")
-			
+					os.mkdir(self.db.path+"/"+self._tablename)
+					is_new=True
+					for k,elem in enumerate(self._fields):
+						os.mkdir(self.db.path+"/"+self._tablename+"/"+json.dumps(k))
 			for row in self.grud:
 				self.grud[row].write()
+			if self._has_consulte() or not exists:
+				settings["fields"]=[]		
+				settings["cursor"]=self.cursor
 
+				for k,elem in enumerate(self._fields):
+					attrs=elem._getattrs()
+					if not is_new:						
+						if "compute" in elem._updates:
+							source=inspect.getsource(attrs["compute"])
+							attrs["compute"]=source[source.find("=")+1:]
+						if "default" in elem._updates:
+							source=inspect.getsource(attrs["default"])
+							attrs["default"]=source[source.find("=")+1:]
+					else:
+						if "__call__" in dir(attrs["compute"]):
+							source=inspect.getsource(attrs["compute"])
+							attrs["compute"]=source[source.find("=")+1:]
+						else:
+							attrs["compute"]=json.dumps(attrs["compute"])
+
+						if "__call__" in dir(attrs["default"]):
+							source=inspect.getsource(attrs["default"])
+							attrs["default"]=source[source.find("=")+1:]
+						else:
+							attrs["default"]=json.dumps(attrs["default"])
+
+
+					
+					settings["fields"].append(attrs)
+					
+				data=json.dumps(settings)
+				with open(self.db.path+"/"+self._tablename+"/settings.py","w") as f:
+						f.write(data)
+				self._end_consulte()
+				
+			
 			
 
 

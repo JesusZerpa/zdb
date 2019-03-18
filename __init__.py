@@ -10,13 +10,16 @@ def kill(cls,path):
 			dblives.remove(path)
 def _dblives():
 	return globals()["dblives"]
-def DB(system,path):
+def DB(system,path=None):
 	"""
 	El argumento system es pasado automaticamente
 	"""
-	
+	if type(system)==str:#esto pasa por alguna razon cuando system no se pasa por defecto
+		path=system
 	for db in dblives:
+
 		if db.path==path:
+			
 			return db
 	else:
 		_DB.kill=kill

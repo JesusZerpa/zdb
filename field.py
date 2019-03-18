@@ -15,6 +15,7 @@ class Field(object):
 
 	esta se pasa como un tipo en el campo
 	"""
+	_updates=[]
 	def __init__(self, name,type,length=None, default=None,
 		required=False, requires='<default>',
 		ondelete='CASCADE', notnull=False, unique=False,
@@ -183,7 +184,8 @@ class Field(object):
 		atributos={}
 		if self.type=="upload":
 			atributos["uploadfolder"]=self.uploadfolder
-
+		atributos["name"]=self.name
+		atributos["type"]=self.type
 		atributos["ondelete"]=self.ondelete
 		atributos["required"]=self.required
 		atributos["unique"]=self.unique
@@ -349,7 +351,10 @@ class Field(object):
 		return consulta
 
 	def update(self,attr={}):
+		self.table._create_consulte()
+
 		for elem in attr:
+			self._updates.append(elem)
 			_elem=attr[elem]
 			if elem=="type":
 				self.type=_elem #reference tabla

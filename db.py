@@ -34,15 +34,15 @@ class DB(object):
 	def __getitem__(self,tablename):
 		
 		if tablename in self.tables or tablename in self.__tablesbycreate:
+
 			for k,elem in enumerate(self._tables):
 				if elem._tablename==tablename:
+
 					return elem
-					
-		else:
-			table=Table.load(tablename,self)
-			
-			self._tables.append(table)
-			return table
+			else:
+				table=Table.load(tablename,self)
+				self._tables.append(table)
+				return table
 
 		
 		
