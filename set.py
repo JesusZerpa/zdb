@@ -393,10 +393,16 @@ class Set(object):
 	def __str__(self):
 		import json
 		content=""
-		for row in self:
+		from datetime import datetime,time,date
 
+		for row in self:
 			for k,campo in enumerate(row.table.fields):
-				content+=json.dumps(row[k])+("," if k<len(row.table.fields)-1 else "")
+				d=row[k]
+				if type(d)==datetime or type(d)==time or type(d)==date:
+					d=d.strftime(row.table._fields[k].format)
+				
+
+				content+=json.dumps(d)+("," if k<len(row.table.fields)-1 else "")
 			content+="\n"
 
 		return content

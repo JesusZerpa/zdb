@@ -28,21 +28,29 @@ class DB(object):
 	def define_table(self,tablename,*fields,**kwargs):
 		table=Table(tablename,self,fields,0,True)
 		if "comment" in kwargs: table.settings["comment"]=kwargs["comment"]
+		if tablename not in dir(self):
+			table.db=self
+			setattr(self,tablename,table)
 		self._tables.append(table)
 		self.__tablesbycreate.append(table._tablename)
 
 	def __getitem__(self,tablename):
 		
 		if tablename in self.tables or tablename in self.__tablesbycreate:
-
 			for k,elem in enumerate(self._tables):
+
 				if elem._tablename==tablename:
 
 					return elem
 			else:
+
 				table=Table.load(tablename,self)
+
 				self._tables.append(table)
 				return table
+		else:
+			raise Exception("La tabla '"+tablename+"' no existe")
+
 
 		
 		

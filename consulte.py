@@ -68,6 +68,7 @@ class Consulte(object):
 
 					return a==b.ids
 				else:
+					
 
 					return a==b
 			elif operador=="!=":				

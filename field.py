@@ -351,7 +351,8 @@ class Field(object):
 		return consulta
 
 	def update(self,attr={}):
-		self.table._create_consulte()
+		if not self.table._has_consulte():
+			self.table._create_consulte()
 
 		for elem in attr:
 			self._updates.append(elem)

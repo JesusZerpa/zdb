@@ -25,7 +25,10 @@ class Table(object):
 					for field in self.settings["fields"]:
 						exec("v="+field["compute"])
 						field["compute"]=v
-						exec("v="+field["default"])
+						if type(field["default"])==str or type(field["default"])==unicode:
+							exec("v="+field["default"])
+						else:
+							v=field["default"]
 						field["default"]=v
 						f=Field(field["name"],field["type"])
 						f.table=self
@@ -83,14 +86,24 @@ class Table(object):
 		self.c=0
 		self.cursor=cursor#este es el cursor actual de la tabla
 	def _create_consulte(self):
+		import time
+		
 		if os.path.exists(self.db.path+"/"+self._tablename):
+			
 			exists=existed=os.path.exists(self.db.path+"/"+self._tablename+"/.consulte")
-			consulte={"timeout":5,"id":id(self)}
+			consulte=None 
+		
 			if exists:
 				with open(self.db.path+"/"+self._tablename+"/.consulte") as f:
-					consulte=json.loads(f.read())
-			if consulte["id"]!=id(self):
+					read=f.read()
+					if read:
+						consulte=json.loads(read)
+				os.remove(self.db.path+"/"+self._tablename+"/.consulte")
+
+			if consulte and consulte["id"]!=id(self):
+
 				tiempo=time.time()
+			
 				while exists:
 					time.sleep(0.2)
 					if time.time()-tiempo>consulte["timeout"]:
@@ -98,17 +111,29 @@ class Table(object):
 						exists=False
 						break
 					exists=os.path.exists(self.db.path+"/"+self._tablename+"/.consulte")
-				with open(self.db.path+"/"+self._tablename+"/.consulte","w") as f:
-					if existed:
-						self.get_settings(self._tablename,self.db)
+
+			with open(self.db.path+"/"+self._tablename+"/.consulte","w") as f:
+				if existed:
+					self.get_settings(self._tablename,self.db)
+				if consulte:
 					f.write(json.dumps({"timeout":self.timeout,"id":id(self),"message":{"consulte":consulte["id"],"status":404}}))
+				else:
+					f.write(json.dumps({"timeout":self.timeout,"id":id(self)}))
+				
 	def _has_consulte(self):
 
 		exists=existed=os.path.exists(self.db.path+"/"+self._tablename+"/.consulte")
 
 		if exists:
 			with open(self.db.path+"/"+self._tablename+"/.consulte") as f:
-				consulte=json.loads(f.read())
+				read=f.read()
+				if read:
+					consulte=json.loads(read)
+				else:
+					consulte=None
+			if consulte==None:
+				os.remove(self.db.path+"/"+self._tablename+"/.consulte")
+				return False
 			if consulte["id"]==id(self):
 				return True
 		else:
@@ -208,9 +233,11 @@ class Table(object):
 						os.mkdir(self.db.path+"/"+self._tablename+"/"+json.dumps(k))
 			for row in self.grud:
 				self.grud[row].write()
+			
 			if self._has_consulte() or not exists:
 				settings["fields"]=[]		
 				settings["cursor"]=self.cursor
+			
 
 				for k,elem in enumerate(self._fields):
 					attrs=elem._getattrs()
@@ -219,8 +246,11 @@ class Table(object):
 							source=inspect.getsource(attrs["compute"])
 							attrs["compute"]=source[source.find("=")+1:]
 						if "default" in elem._updates:
-							source=inspect.getsource(attrs["default"])
-							attrs["default"]=source[source.find("=")+1:]
+							if attrs["default"]!=None:
+								source=inspect.getsource(attrs["default"])
+								attrs["default"]=source[source.find("=")+1:]
+							else:
+								attrs["default"]=json.dumps(attrs["default"])
 					else:
 						if "__call__" in dir(attrs["compute"]):
 							source=inspect.getsource(attrs["compute"])
